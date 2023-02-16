@@ -8,13 +8,12 @@
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Import packages
+## Import packages ##
 
 from collections import Counter
 import numpy as np
 import pandas as pd
 import itertools
-
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -25,7 +24,7 @@ import itertools
 ###################################################
 
 # Read in spreadsheet
-df_in = pd.read_excel('S_sonnei_spreadsheet.xlsx')
+df_in = pd.read_excel('~/OneDrive - The University of Liverpool (1)/Typing_test_data.xlsx')
 
 #print(df_in)
 
