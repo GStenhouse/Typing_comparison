@@ -17,82 +17,87 @@ import itertools
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-###################################################
-#                                                 #
-# From Excel to pairwise comparisons, pivot style #
-#                                                 #
-###################################################
+###############
+#  FUNCTIONS  #
+###############
+
+# To create a dictionary of pairwise pivot tables
+def pairingtab(df_in, list):
+    pivot_dict = {}
+
+    for pair in list:
+        x = pair[0]
+        y = pair[1]
+        pivot = pd.crosstab(df_in[x], df_in[y], margins=True)
+
+        key = x + " - " + y
+
+        pivot_dict[key] = pivot
+    return pivot_dict
+
+# Identify matching groups, with and without isolate numbers
+def compare(pivot_dict):
+    piv_comp_dict = {}            # create empty dicts to collect all  output data - pivot : row and matching columns
+    piv_pair_dict = {}                # pivot : pair and number of matches
+
+    for key, piv in pivot_dict.items():
+        row_names = piv.index.to_series() # create list of row names
+        col_cat = piv.columns.to_list()   # create list of column names
+
+        pair_out = []              # create empty list to take the pairs and number objects
+        row_match_dict = {}     # create empty dictionaries for collecting the data - list of matching columns by row
+        row_pair_dict = {}          # group pairs and number of matchin isolates
+                
+        for i in range(0,len(piv.index)):
+            row = piv.iloc[i]              # extract row
+            r_name = row_names.iloc[i]         # collect row name
+            col_matches = []                       # create empty list for names of columns with isolates in row
+            row_count_dict = {}                     # create dict for collecting number of column groups which match row group
+
+            column_no = -1      # set column number to -1 (so that it changes to 0 before cell is checked)
+
+            if r_name != 'All':     # skip grand total rows   
+                for cell in row.values.tolist():
+                    column_no += 1              # add 1 to column number
+                
+                    if cell  > 0:
+                        c_name = col_cat[column_no]     # collect corresponding column name to non-zero cell
+
+                        if c_name != 'All':     # ignore grand total columns
+                            col_matches.append(c_name)        # add matching column name to list
+                            pair = str(r_name) + " " + str(c_name) + "\t" + str(cell)
+                        
+            row_match_dict[r_name] = col_matches        # link row name with matching columns
+            pair_out.append(pair)
+
+        piv_comp_dict[key] = row_match_dict
+        piv_pair_dict[key] = pair_out
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+##########
+#  MAIN  #
+##########
 
 # Read in spreadsheet
 df_in = pd.read_excel('~/OneDrive - The University of Liverpool (1)/Typing_test_data.xlsx')
 
-#print(df_in)
-
 # define number of columns as object
 x = len(df_in.columns)
 
-#print(x)
-
 # create list of column names
 columns = df_in.columns.to_list()
-
-#print(columns)
 
 # create a series of pairwise comparison pivot tables.
 # create list of column names as pairwise comparisons
 pair_list = itertools.permutations(columns, r=2)
 
-# use pairwise list to run loop and iteratively add pivots to dictionary, pair as a string = key : pivot
-pivot_dict = {}
+# use pairwise list to run pair wise pivot table creation
+pivot_dict = pairingtab(df_in, pair_list)
 
-for pair in pair_list:
-    x = pair[0]
-    y = pair[1]
-    pivot = pd.crosstab(df_in[x], df_in[y], margins=True)
-
-    key = x + y
-
-    pivot_dict[key] = pivot
-
-
-
-
-key = "HC200250 SNP Threshold"
-pivot = pivot_dict[key]
-row_names = pivot.index.to_series() # create list of row names
-col_cat = pivot.columns.to_list()   # create list of column names
-pivot_comp_dict = {}              # create empty dictionaries for collecting the data
-pivot_count_dict = {}
-comp = []
-
-
-for i in range(0,len(pivot.index)):
-    row = pivot.iloc[i]              # extract row
-    r_name = row_names.iloc[i]         # collect row name
-    name_dict = {}                       # create empty dictionaries to collect data for future dataframes
-    row_count_dict = {} 
-    
-
-    counter = 0         # set counters to 0
-    column_no = -1
-            
-    for cell in row.values.tolist():
-        column_no += 1
-        if cell > 0:
-            counter += 1            # add 1 every time the typing systems intersect
-            c_name = col_cat[column_no]
-            name_dict[r_name] = c_name         
-                    
-    comp.append(name_dict)
-    row_count_dict[r_name] = counter
-    row_count_df = pd.DataFrame.from_dict(row_count_dict, orient = "index")
-    
-pivot_comp_dict[key] = name_dict
-pivot_count_dict[key] = row_count_df
-
-
-pivot_comp_df = pd.DataFrame.from_dict(pivot_comp_dict)
-pivot_count_df = pd.DataFrame.from_dict(pivot_count_dict)
+# use output to identify matching groups
+compare(pivot_dict)
 
 
 
