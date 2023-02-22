@@ -22,17 +22,16 @@ import itertools
 ###############
 
 # To create a dictionary of pairwise pivot tables
-def pairingtab(df_in, list):
+def pairingtab(df_in, list, ignore=None):
     ct_dict = {}
 
     for pair in list:
         x = pair[0]
         y = pair[1]
-        pivot = pd.crosstab(df_in[x], df_in[y])
-
-        key = x + " - " + y
-
-        ct_dict[key] = pivot
+        if x != ignore and y != ignore:
+            pivot = pd.crosstab(df_in[x], df_in[y])
+            key = x + " - " + y
+            ct_dict[key] = pivot
     return ct_dict
 
 
@@ -53,7 +52,7 @@ def compare(piv_dict):
             data = piv.iloc[i]                      # extract row
             for cell in data:
                 index += 1              # add 1 to row number
-                if cell  > 0:
+                if cell  > 0 :
                     o_name = data.index[index]       # extract name of matching column
                     matches.append(o_name)        # add matching column name to list
                     pair = str(name) + " - " + str(o_name) + ": " + str(cell)   # collect row, column and no. of matching isolates
@@ -68,46 +67,58 @@ def compare(piv_dict):
 
 
 # generate pairwise comparison stats of granular similarity
-def comp_stats(names, comparisons):
-    out_dict = {}
+def comp_stats(piv_dict, in_list):
     out_dict = {}        # create empty dictionary to collect results
 
-
-    for duo in names:
-        pair = duo[0] + " - " + duo[1]
-        matches = comparisons[0][pair]     # extract matches by pair
+    for key, piv in piv_dict.items():
+        col_names = piv.columns.to_series()     # extract column names
+        row_names = piv.index.to_series()       # extract row names
+        n_cols = len(col_names)   # determine the total number of isolates groups defined by typing scheme level - cols
+        n_rows = len(row_names)   # determine the total number of isolates groups defined by typing scheme level - rows          
         output = []
-    
-        tot_count = 0   # set counters
-        exact_count = 0
-        exceed_count = 0
-        skew = 0
+        no_excess = 0       # set counters to zero
+        vol_excess = 0
 
+        for row in row_names.to_list():
+            matches = len(in_list[0][key][row])
+            if matches > 1:
+                no_excess += 1
+                vol_excess = vol_excess + matches    
 
-        for group in matches.values():        # extract specific row/column
-            tot_count = tot_count + len(group)      # count total matches
+        if n_rows > n_cols:
+            diff = n_rows - n_cols
+            perc_diff = diff/n_rows
+        elif n_rows < n_cols:
+            diff = n_cols - n_rows
+            perc_diff = diff/n_cols
+        else:
+            diff = 0
+            perc_diff = "na"
+        
+        if no_excess == 0:
+            ave_excess = "na"
+        
+        else:
+            ave_excess = vol_excess / no_excess
 
-            if len(group) == 1:         # count exact matches
-                exact_count += 1
-            
-            elif len(group) > 1:          # count number of instances where 1 group matches with multiple groups
-                exceed_count += 1
-                skew = skew + (len(group) - 1)
-    
-        perc_act = exact_count/tot_count    # define totals as proportion of total matches
-        perc_eed = exceed_count/tot_count
-        perc_skew = skew/tot_count
-
-        output.append(tot_count) 
-        output.append(exact_count) 
-        output.append(exceed_count) 
-        output.append(perc_act) 
-        output.append(perc_eed) 
-        output.append(skew) 
-        output.append(perc_skew)
-        out_dict[pair] = output
+        ratio = str(n_rows) + ":" + str(n_cols)
+        output.append(ratio)
+        output.append(diff) 
+        output.append(perc_diff)
+        output.append(no_excess) 
+        output.append(vol_excess)
+        output.append(ave_excess)  
+        out_dict[key] = output
     return(out_dict)
 
+# identify pairs within a certain threshold similarity
+def simi(piv_dict, stats, threshold=0.45):
+    similar = []
+    for key in piv_dict.keys():
+        if stats[key][2] <= threshold:
+            similar.append(key)
+
+    return(similar)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -126,7 +137,7 @@ columns = df_in.columns.to_list()
 pair_list = itertools.permutations(columns, r=2)
 
 # use pairwise list to run pair wise pivot table creation
-pivot_dict = pairingtab(df_in, pair_list)
+pivot_dict = pairingtab(df_in, pair_list, ignore="Accession")
 
 # use output to identify matching groups - don't need to do separate by columns comp because pairingtab create list with pair both ways round
 gran_comp_list = compare(pivot_dict)
@@ -134,13 +145,20 @@ gran_comp_list = compare(pivot_dict)
 # generate comparison stats
 # find the number of times, per pivot pair, that there are exact matches, as a proportion of the total number of matches
 pair_list = itertools.permutations(columns, r=2)
-comp_stats_out = comp_stats(pair_list, gran_comp_list)
+comp_stats_out = comp_stats(pivot_dict, gran_comp_list)
 
 # compile comparisons in to dataframe
-comp_stats_df = pd.DataFrame.from_dict(comp_stats_out, orient = "index", columns = ("Total matches", "Exact matches", "Excess matches", "Exact proportion", "Excess porportion", "Skew", "skew proportion"))
+comp_stats_df = pd.DataFrame.from_dict(comp_stats_out, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
 
 # and then send to csv file
 comp_stats_df.to_csv("test_gran_comp.csv", sep=",")
+
+# identify similar typing levels
+similars = simi(pivot_dict, comp_stats_out)
+
+
+    
+
 
 
     
