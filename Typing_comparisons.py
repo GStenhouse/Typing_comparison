@@ -112,7 +112,7 @@ def comp_stats(piv_dict, in_list):
     return(out_dict)
 
 # identify pairs within a certain threshold similarity
-def simi(piv_dict, stats, threshold=0.45):
+def simi(piv_dict, stats, threshold=0.15):
     similar = []
     for key in piv_dict.keys():
         if stats[key][2] <= threshold:
