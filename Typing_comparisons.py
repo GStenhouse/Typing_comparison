@@ -16,6 +16,7 @@ import pandas as pd
 import itertools
 import seaborn as sns
 import matplotlib.pyplot as plt
+from dython.nominal import associations
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -189,7 +190,7 @@ def density_plt(df, piv_dict, id="Accession", xlab=None, ylab=None):
 ##########
 
 # Read in spreadsheet
-df_in = pd.read_excel('~/OneDrive - The University of Liverpool (1)/S_sonnei_spreadsheet.xlsx')
+df_in = pd.read_excel('~/OneDrive - The University of Liverpool (1)/Scripting/Typing_test_data.xlsx')
 
 # create list of column names
 columns = df_in.columns.to_list()
@@ -222,8 +223,13 @@ similars = simi(pivot_dicts[1], comp_stats_out)
 # create df with a group size for each isolate and typing level and generate density plots - with group size along x-axis
 g_size_out_df = density_plt(df_in, pivot_dicts[0], xlab = "Group size (number of isolates)", ylab = "Proportion on population")
 
+# Theil's U 
+associations(df_in, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, display_rows='all', display_columns='all', hide_rows=None, hide_columns=None, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value="0", ax=None, figsize=None, annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, filename=None, multiprocessing=True, max_cpu_cores=None)
 
+theil_df = associations(df_in, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', symmetric_nom_nom=False, hide_rows=Ignore, hide_columns=Ignore, multiprocessing=True, compute_only=True)
 
+sns.heatmap(theil_df)
+plt.show
 
 
     
