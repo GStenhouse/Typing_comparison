@@ -99,10 +99,10 @@ def comp_stats(piv_dict, in_list):
             perc_diff = diff/n_cols
         else:
             diff = 0
-            perc_diff = "na"
+            perc_diff = "0"
         
         if no_excess == 0:
-            ave_excess = "na"
+            ave_excess = "0"
         
         else:
             ave_excess = vol_excess / no_excess
@@ -122,7 +122,7 @@ def comp_stats(piv_dict, in_list):
 def simi(piv_dict, stats, threshold=0.15):
     similar = []
     for key in piv_dict.keys(): 
-        if stats[key][2] != "na" and stats[key][2] <= threshold:
+        if stats[key][2] != "0" and stats[key][2] <= threshold:
             similar.append(key)
 
     return(similar)
