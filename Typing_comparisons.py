@@ -215,7 +215,7 @@ comp_stats_out = comp_stats(pivot_dicts[1], gran_comp_list)
 comp_stats_df = pd.DataFrame.from_dict(comp_stats_out, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
 
 # and then send to csv file
-comp_stats_df.to_csv("test_gran_comp.csv", sep=",")
+comp_stats_df.to_csv("gran_comp.csv", sep=",")
 
 # identify similar typing levels
 similars = simi(pivot_dicts[1], comp_stats_out)
