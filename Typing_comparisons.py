@@ -91,12 +91,9 @@ def comp_stats(piv_dict, in_list):
                 no_excess += 1
                 vol_excess = vol_excess + matches    
 
-        if n_rows > n_cols:
-            diff = n_rows - n_cols
-            perc_diff = diff/n_rows
-        elif n_rows < n_cols:
+        if n_rows > n_cols or n_rows < n_cols:
             diff = n_cols - n_rows
-            perc_diff = diff/n_cols
+            perc_diff = diff/(n_cols + n_rows)
         else:
             diff = 0
             perc_diff = "0"
