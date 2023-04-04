@@ -180,6 +180,71 @@ def density_plt(df, piv_dict, id="Accession", xlab=None, ylab=None):
         plt.close()
     
     return(n_df)        # collect group size dataframe for validation
+
+
+def dens_plt(df, piv_dict, id="Accession", xlab=None, ylab=None):
+    key_set = []            # create an empty list to fill with a unique set of typing scheme names
+    for pair, piv in piv_dict.items():
+        keys = pair.split(" - ")
+        key_set = key_set + keys
+    key_set = set(key_set)
+
+    subsets = {}        # create empty list for collecting year based subsets
+    for i in range(0,6):  # create subsets by year
+        subdf = df[(df["Year"].between(2016,(2016+i), inclusive="both"))]     # create year based subsets
+        subsets[i] = subdf
+    
+    g_size_dict = {}        # create an empty dictionary to collect group sizes by typing scheme - for each subset
+    for i in range(0,6):  # create subset dfs
+        df = subsets[i]
+        g_size = {}
+        for column in df:
+            data = df[column]
+            size = data.value_counts(dropna=False)     # get df of row totals
+            g_size[column] = size
+        g_size_dict[i] = g_size
+            
+    gs_dfs = {}     # create empty dict to contain dfs of group size for year groups key = subset number 
+    for i in range(0,6):       
+        df = subsets[i]
+        n_df = df[[id, "Year"]]        # create new series / dataframe of column with isolate IDs and year
+        for key in key_set:
+            data = []
+            tmp_df = df[key]
+            for cell in tmp_df:
+                size = g_size_dict[i][key].loc[cell]        # extract group size based on which group each isolate belongs to
+                data.append(size)
+            ns = pd.Series(data,name=key)     # turn sizes in to a series, with typing level name as column name
+            n_df = pd.concat([n_df,ns], axis=1)     # add new series to the new dataframe
+        gs_dfs[i] = n_df
+
+    colours = ["navy", "mediumblue", "royalblue", "cornflowerblue", "deepskyblue","lightblue"]# re-make graphs
+    for key in key_set:
+        for i in range(0,6):  # create subsets by year
+            fig = sns.kdeplot(gs_dfs[i][key], fill=True, color=colours[i], warn_singular=False)          # create density plots with each year having a different hade curve
+        plt.legend(["2016","2017","2018","2019","2020","2021"], loc='upper center')
+        plt.title(key)
+        plt.xlabel(xlab)
+        plt.ylabel(ylab)
+        filename = "density_plots/" + str(key) + "_split.png"
+        plt.savefig(filename)     # save plots as image files
+        plt.close()
+
+        Fig, axs = plt.subplots(1)
+        x_multi = []
+        for i in range (0,6):
+            x_multi.append(gs_dfs[i][key])
+        axs.hist(x_multi, density=True, color=colours)
+        axs.legend(["2016","2017", "2018","2019","2020","2021"], loc='upper center')
+        axs.set_title(key)
+        axs.set_xlabel(xlab)
+        axs.set_ylabel(ylab)
+        filename_h = "density_plots/" + str(key) + "_split_hist.png"
+        plt.savefig(filename_h)     # save plots as image files
+        plt.close()
+    
+    return(n_df)        # collect group size dataframe for validation
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ##########
@@ -222,6 +287,9 @@ g_size_out_df = density_plt(df_in, pivot_dicts[0], xlab = "Group size (number of
 
 # send group size dataframe to file for validataion
 g_size_out_df.to_csv("g_size.csv", sep=",")
+
+# Re-do density plots, this time with group size determined for each subset, rather than from total dataset
+g_size_split_out_df = dens_plt(df_in, pivot_dicts[0], xlab = "Group size (number of isolates)", ylab = "Proportion on population")
 
 # Theil's U 
 ignore_2 = ["Accession","Uberstrain", "HC1100 (cgST Cplx)", "HC2350 (subsp.)", "HC2000", "HC1500", "Name"]
