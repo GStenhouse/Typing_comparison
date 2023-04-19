@@ -121,6 +121,7 @@ def simi(piv_dict, stats, threshold=0.15):
     return(similar)
 
 
+# function for subsetting dataframe by year
 def year_sets(df, start_date = 2016, no_years = int(6)):
     subsets = {}
     for i in range(0,no_years):  # create subsets by year
@@ -129,6 +130,7 @@ def year_sets(df, start_date = 2016, no_years = int(6)):
     return(subsets)
 
 
+# dataframe for collecting column names and pairs from cross tabulation to drive for loops iterating through columns / typing scheme level names
 def identifiers(piv_dict):
     out = []
     pair_list = []
@@ -143,10 +145,11 @@ def identifiers(piv_dict):
     return(out)
 
 
+# function for determining the group size for each isolates across all typing scheme levels (columns) and generating new dataframe(s) with the group size rather than name for each isolate - for determining frequency by group size
 def sizing(df, piv_dict, subsetting=False, start_date = 2016, no_years = int(6), id="Accession"):
     ident = identifiers(piv_dict)
     if subsetting:
-        subsets = (year_sets(df, start_date, no_years))
+        subsets = (year_sets(df, start_date=start_date, no_years=no_years))
         g_size_dict = {}        # create an empty dictionary to collect group sizes by typing scheme - for each subset
         for i in range(0,6):  # create subset dfs
             df = subsets[i]
@@ -220,9 +223,9 @@ def h_plot(input, legend=None,title=None, x_lab=None, y_lab=None, filename="h_pl
 
 
 # the previously defined functions of generating yearly subsets, and define groups sizes and plotting functions to generate plots showing yearly breakdown of group size frenquency for each typing level
-def density_plt(df, piv_dict, xlab=None, ylab=None, subsetting=False, no_years = int(6), colours = list(("navy", "mediumblue", "royalblue", "cornflowerblue", "deepskyblue","lightblue")), leg = list(("2016","2017","2018","2019","2020","2021"))):
+def density_plt(df, piv_dict, subsetting=False, xlab=None, ylab=None, no_years = int(6), colours = list(("navy", "mediumblue", "royalblue", "cornflowerblue", "deepskyblue","lightblue")), leg = list(("2016","2017","2018","2019","2020","2021"))):
     ident = identifiers(piv_dict)
-    size_dfs = sizing(df, piv_dict)
+    size_dfs = sizing(df, piv_dict, subsetting=subsetting)
     if subsetting:    
         for key in ident[1]:
             f_name = "density_plots/" + str(key) + "_split.png"
@@ -242,6 +245,11 @@ def density_plt(df, piv_dict, xlab=None, ylab=None, subsetting=False, no_years =
             f_name_h = "density_plots/" + str(key) + "_hist.png"
             h_plot(subsets, legend=leg, title=key, x_lab=xlab, y_lab=ylab, filename=f_name_h, colours=colours, no_years = no_years)
   
+
+# function to assess the number of small groups and numbers of isolates witin them identified each year, with option to generate density plots / histograms
+def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plots = False, plt_type = "density"):
+    kjefife
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
