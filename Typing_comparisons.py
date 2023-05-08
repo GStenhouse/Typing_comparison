@@ -1,4 +1,4 @@
-# This is a script to take an excel spreadsheet of isolates and their types (by various typing schemes) and
+## This is a script to take an excel spreadsheet of isolates and their types (by various typing schemes) and
 # compare the granularity of the grouping by the various typing methods. 
 
 # The script will generate descriptive stats of the level of similarity between the grouping of isolates 
@@ -17,6 +17,8 @@ import itertools
 import seaborn as sns
 import matplotlib.pyplot as plt
 from dython.nominal import associations
+import sys
+from xlsxwriter import Workbook
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -25,7 +27,7 @@ from dython.nominal import associations
 ###############
 
 # To create a dictionary of pairwise pivot tables
-def pairingtab(df_in, list, ignore=None):
+def pairingtab(df_in, list, ignore=None): # ignore = list of columns to ignore in the pairwise comparisons
     out = []
     ct_dict = {}
     ctm_dict = {}
@@ -41,7 +43,7 @@ def pairingtab(df_in, list, ignore=None):
 
     out.append(ctm_dict)
     out.append(ct_dict)
-    return out
+    return(out)
 
 
 # Identify matching groups, with and without isolate numbers
@@ -71,10 +73,10 @@ def compair(piv_dict):
         piv_pair_dict[key] = pair_out       # create dict of match lists - by pivot name
     out.append(piv_comp_dict)           # create a 2 item list of the two dictionaries - to be returned
     out.append(piv_pair_dict)
-    return out
+    return(out)
 
 
-# generate pairwise comparison stats of granular similarity
+# generate pairwise comparison stats of granular similarity between typing schemes
 def comp_stats(piv_dict, in_list):
     out_dict = {}        # create empty dictionary to collect results
     for key, piv in piv_dict.items():
@@ -112,7 +114,7 @@ def comp_stats(piv_dict, in_list):
     return(out_dict)
 
 
-# identify pairs within a certain threshold similarity
+# identify pairs within a certain threshold similarity - based on the number of isolates in each group
 def simi(piv_dict, stats, threshold=0.15):
     similar = []
     for key in piv_dict.keys(): 
@@ -122,10 +124,10 @@ def simi(piv_dict, stats, threshold=0.15):
 
 
 # function for subsetting dataframe by year
-def year_sets(df, start_date = 2016, no_years = int(6)):
+def year_sets(df, start_date = 2016, no_years = int(6), inclusive = "both"):
     subsets = {}
     for i in range(0,no_years):  # create subsets by year
-        subdf = df[(df["Year"].between(start_date,(start_date+i), inclusive="both"))]     # create year based subsets
+        subdf = df[(df["Year"].between(start_date,(start_date+i), inclusive=inclusive))]     # create year based subsets
         subsets[i] = subdf
     return(subsets)
 
@@ -146,10 +148,10 @@ def identifiers(piv_dict):
 
 
 # function for determining the group size for each isolates across all typing scheme levels (columns) and generating new dataframe(s) with the group size rather than name for each isolate - for determining frequency by group size
-def sizing(df, piv_dict, subsetting=False, start_date = 2016, no_years = int(6), id="Accession"):
+def sizing(df, piv_dict, subsetting=False, start_date = 2016, no_years = int(6), id="Accession", inclusive = "both"):
     ident = identifiers(piv_dict)
     if subsetting:
-        subsets = (year_sets(df, start_date=start_date, no_years=no_years))
+        subsets = (year_sets(df, start_date=start_date, no_years=no_years, inclusive=inclusive))
         g_size_dict = {}        # create an empty dictionary to collect group sizes by typing scheme - for each subset
         for i in range(0,6):  # create subset dfs
             df = subsets[i]
@@ -196,11 +198,17 @@ def sizing(df, piv_dict, subsetting=False, start_date = 2016, no_years = int(6),
     return(out)
 
 
-# define plotting functions - first density plots and the histograms - to be used within other functions to generated the plots in the same way with various input data
+# define plotting functions - first density plots and then histograms - to be used within other functions to generated the plots in the same way with various input datasets
+# density plots
 def d_plot(input, legend=None, title=None, x_lab=None, y_lab=None, filename="d_plot.png", colours = "black", no_years = int(6)):
     sns.set(style="darkgrid")
     for i in range(0,no_years):  # create subsets by year
-        fig = sns.kdeplot(input[i][title], fill=True, color=colours[i], warn_singular=False)          # create density plots with each year having a different hade curve
+        data = input[i][title]
+        data = data.dropna()
+        if data.empty == True:
+            break
+        else:
+            fig = sns.kdeplot(data, fill=True, color=colours[i], warn_singular=False)          # create density plots with each year having a different hade curve
     plt.legend(legend, loc='upper center')
     plt.title(title)
     plt.xlabel(x_lab)
@@ -208,18 +216,26 @@ def d_plot(input, legend=None, title=None, x_lab=None, y_lab=None, filename="d_p
     plt.savefig(filename)     # save plots as image files
     plt.close()
 
-def h_plot(input, legend=None,title=None, x_lab=None, y_lab=None, filename="h_plot.png", colours = "black", no_years = int(6)):
-    Fig, axs = plt.subplots(1)
+# histograms
+def h_plot(input, legend=None,title=None, x_lab=None, y_lab=None, filename="h_plot.png", colours = "", no_years = int(6)):
     x_multi = []
+    c = []
     for i in range (0,no_years):
-        x_multi.append(input[i][title])
-    axs.hist(x_multi, density=True, color=colours)
-    axs.legend(legend, loc='upper center')
-    axs.set_title(title)
-    axs.set_xlabel(x_lab)
-    axs.set_ylabel(y_lab)
-    plt.savefig(filename)     # save plots as image files
-    plt.close()
+        data = input[i][title]
+        data = data.dropna()
+        if data.empty == True:
+            break
+        else:
+            x_multi.append(data)
+            c.append(colours[i])
+        Fig, axs = plt.subplots(1)
+        axs.hist(x_multi, density=True, color=c)
+        axs.legend(legend, loc='upper center')
+        axs.set_title(title)
+        axs.set_xlabel(x_lab)
+        axs.set_ylabel(y_lab)
+        plt.savefig(filename)     # save plots as image files
+        plt.close()
 
 
 # the previously defined functions of generating yearly subsets, and define groups sizes and plotting functions to generate plots showing yearly breakdown of group size frenquency for each typing level
@@ -229,10 +245,10 @@ def density_plt(df, piv_dict, subsetting=False, xlab=None, ylab=None, no_years =
     if subsetting:    
         for key in ident[1]:
             f_name = "density_plots/" + str(key) + "_split.png"
-            d_plot(size_dfs, legend=leg, title=key, x_lab=xlab, y_lab=ylab, filename=f_name, colours=colours, no_years = no_years)
+            d_plot(size_dfs, legend=leg, title=(key), x_lab=xlab, y_lab=ylab, filename=f_name, colours=colours, no_years=no_years)
             
             f_name_h = "density_plots/" + str(key) + "_split_hist.png"
-            h_plot(size_dfs, legend=leg, title=key, x_lab=xlab, y_lab=ylab, filename=f_name_h, colours=colours, no_years = no_years)
+            h_plot(size_dfs, legend=leg, title=(key), x_lab=xlab, y_lab=ylab, filename=f_name_h, colours=colours, no_years=no_years)
     else:
         for key in ident[1]:
             subsets = []        # create empty list for collecting year based subsets
@@ -243,13 +259,117 @@ def density_plt(df, piv_dict, subsetting=False, xlab=None, ylab=None, no_years =
             d_plot(subsets, legend=leg, title=key, x_lab=xlab, y_lab=ylab, filename=f_name, colours=colours, no_years = no_years)
             
             f_name_h = "density_plots/" + str(key) + "_hist.png"
-            h_plot(subsets, legend=leg, title=key, x_lab=xlab, y_lab=ylab, filename=f_name_h, colours=colours, no_years = no_years)
+            h_plot(subsets, legend=leg, title=key, x_lab=xlab, y_lab=ylab, filename=f_name_h, colours=colours, no_years=no_years)
   
 
 # function to assess the number of small groups and numbers of isolates witin them identified each year, with option to generate density plots / histograms
-def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plots = False, plt_type = "density"):
-    kjefife
+def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plotting = False, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = list(("navy", "mediumblue", "royalblue", "cornflowerblue", "deepskyblue","lightblue")), leg = list(("2016","2017","2018","2019","2020","2021")), order = ""):
+    ident = identifiers(piv_dict)
+    size_dfs = sizing(df, piv_dict, subsetting=False)
+    if not order: 
+        ident = identifiers(piv_dict)
+        order = ident[1] 
+    # create df subsets using threshold to exclude those not of interest
+    def value_sets(in_df, size_df, greater_than=greater_than,threshold=threshold):
+        n_df = in_df["Year"] 
+        for key in order:
+            a = in_df[key]
+            b = size_df[key]
+            col = key + "_gsize"
+            df = pd.concat([a,b], keys=[key,col], axis = 1)
+            if greater_than:
+                subset = df[(df[col] >= threshold)]
+                n_df = pd.concat([n_df,subset], axis =1)
+            else:
+                subset = df[(df[col] <= threshold)]
+                n_df = pd.concat([n_df,subset], axis =1)
+        return(n_df)
+    v_df = value_sets(df, size_dfs)
+    
+    # create yearly subset dfs of group sizes according to threshold and group name dataframe 
+    if subsetting:
+        if inclusive == "neither":
+            subs = {}
+            for i in range(0, no_years):
+                year = start_date + i
+                subset = v_df[(v_df["Year"] == year)]
+                subs[i] = subset        
+        elif inclusive == "both":
+            subs = year_sets(v_df, start_date=start_date, no_years=no_years)
+            for i in range(0, no_years):
+                year = start_date + i
+                subset = subs[i]
+        else:
+            sys.exit("Error inclusive can only be both or neither")
+        # count the number of unique group names for each column for each subset
+        s_list = []
+        y_list = []
+        for i in range(0, no_years):
+            subset = subs[i]
+            year = start_date + i
+            y_list.append(year)
+            s = pd.Series(dtype=int)
+            for key in order:
+                s[key] = (subset[key].nunique(dropna=True))
+            s_list.append(s)
+        n = pd.DataFrame(s_list, index = y_list)
+        out = n
+    else:
+        n = v_df.nunique(axis=0, dropna=True)
+        out = pd.DataFrame(n)
 
+    # generate plots
+    if plotting:     
+        if greater_than:
+            relative = "greater_than"
+            rel = "greater than"
+        else:
+            relative = "less_than"
+            rel = "less than"
+        ylab = " ".join(("Number of groups with n", rel, str(threshold)))
+        if subsetting:
+            # create single bar chart of total n all years
+            if inclusive == "both":
+                inc = "_inc_"
+            else:
+                inc = "_exc_"
+            N = n.sum(axis=0)      
+            N.plot.bar()
+            plt.ylabel(str(ylab))
+            filenam = "density_plots/" + "_groupsize_" + relative + "_" + str(threshold) + inc + "subset.png"
+            plt.savefig(filenam)
+            plt.close()
+            # create bar plots coloured by year
+            u = n.iloc[0:no_years].transpose()
+            if inclusive == "neither":
+                stack = True
+            else:
+                stack = False
+            u.plot.bar(color=colours, stacked=stack)
+            plt.ylabel(str(ylab))
+            filename = "density_plots/" + "_groupsize_" + relative + "_" + str(threshold) + inc + "year_stack.png"
+            plt.savefig(filename)
+            plt.close()
+            # level specific plots
+            for key in order:
+                D = n[key].iloc[0:no_years]
+                D.plot.bar(color=colours)
+                plt.ylabel(str(ylab))
+                plt.title(key)
+                if inclusive == "both":
+                    f_name = "density_plots/" + str(key) + "_groupsize_" + relative + "_" + str(threshold) + inc + "_inclu_years_split.png"
+                else:    
+                    f_name = "density_plots/" + str(key) + "_groupsize_" + relative + "_" + str(threshold) + inc + "sing_years_split.png"
+                plt.savefig(f_name)
+                plt.close()
+        else:
+            filenam = "density_plots/" + "_groupsize_" + relative + "_" + str(threshold) + "not_subset.png"     
+            n.plot.bar()
+            plt.ylabel(str(ylab))
+            plt.savefig(filenam)
+            plt.close() 
+    return(out)            
+           
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -307,3 +427,37 @@ ignore_2 = ["Accession","Uberstrain", "HC1100 (cgST Cplx)", "HC2350 (subsp.)", "
 
 associations(df_in, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, hide_rows=ignore_2, hide_columns=ignore_2, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value="0", ax=None, figsize=(25,25), annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, multiprocessing=True)
 
+# Group size stats by threshold
+hues = list(("navy", "mediumblue", "royalblue", "cornflowerblue", "deepskyblue","lightblue"))
+
+Led = list(("2016","2017","2018","2019","2020","2021"))
+
+order = list(("Genotype", "Lineage", "Clade", "Sub-Clade", "Sub-sub-Clade", "Sub-sub-sub-Clade", "250 SNP Threshold", "100 SNP Threshold", "50 SNP Threshold",  "25 SNP Threshold", "10 SNP Threshold", "5 SNP Threshold", "0 SNP Threshold", "SNP Address", "ST", "HC0 (indistinguishable)", "HC2", "HC5", "HC10", "HC20", "HC50", "HC100", "HC200", "HC400", "HC1100 (cgST Cplx)", "HC1500", "HC2000", "HC2350 (subsp.)"))
+
+thresh_dict = {}
+
+thresh_dict["less_10_inc"] = size_stats(df_in, pivot_dicts[0], threshold = int(10), greater_than = False, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict["less_50_inc"] = size_stats(df_in, pivot_dicts[0], threshold = int(50), greater_than = False, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict["great_10_inc"] = size_stats(df_in, pivot_dicts[0], threshold = int(10), greater_than = True, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict["great_50_inc"] = size_stats(df_in, pivot_dicts[0], threshold = int(50), greater_than = True, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+# single year subsets
+thresh_dict["less_10_exc"] = size_stats(df_in, pivot_dicts[0], threshold = int(10), greater_than = False, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict["less_50_exc"] = size_stats(df_in, pivot_dicts[0], threshold = int(50), greater_than = False, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict["great_10_exc"] = size_stats(df_in, pivot_dicts[0], threshold = int(10), greater_than = True, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict["great_50_exc"] = size_stats(df_in, pivot_dicts[0], threshold = int(50), greater_than = True, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+# save group size dataframes into excel spreadsheets
+writer = pd.ExcelWriter('thresholdstats.xlsx', engine='xlsxwriter')
+
+for sheet, frame in thresh_dict.items():
+    frame.to_excel(writer, sheet_name = sheet)
+
+#critical last step
+writer.close()
