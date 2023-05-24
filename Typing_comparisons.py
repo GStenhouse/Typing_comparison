@@ -378,7 +378,7 @@ def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plotting 
 ##########
 
 # Read in spreadsheet
-df_in = pd.read_excel('~/OneDrive - The University of Liverpool (1)/Scripting/Typing_data.xlsx')
+df_in = pd.read_excel('~/OneDrive - The University of Liverpool (1)/Scripting/S_sonnei_spreadsheet.xlsx')
 
 # create list of column names
 columns = df_in.columns.to_list()
@@ -388,7 +388,7 @@ columns = df_in.columns.to_list()
 pair_list = itertools.permutations(columns, r=2)
 
 # use pairwise list to run pair wise pivot table creation
-Ignore = ["Accession","Uberstrain","Year","Sex","Age Group", "Foreign Travel","Continent of Travel", "Genotype Name", "blaCTX-M-27 gene", "Name"]
+Ignore = ["Accession","Uberstrain","Year","Sex","Age Group", "Foreign Travel","Continent of Travel", "Genotype Name", "blaCTX-M-27 gene", "Name", "Epi cluster"]
 pivot_dicts = pairingtab(df_in, pair_list, ignore=Ignore)
 
 # use output to identify matching groups - don't need to do separate by columns comp because pairingtab create list with pair both ways round
@@ -457,6 +457,85 @@ thresh_dict["great_50_exc"] = size_stats(df_in, pivot_dicts[0], threshold = int(
 writer = pd.ExcelWriter('thresholdstats.xlsx', engine='xlsxwriter')
 
 for sheet, frame in thresh_dict.items():
+    frame.to_excel(writer, sheet_name = sheet)
+
+#critical last step
+writer.close()
+
+
+#############################################
+## Repeat everything minus the identified likely-MSM clades
+
+# Subset out MSM clades
+df_less_MSM = df_in[df_in["Epi cluster"].isnull()]
+
+# create a series of pairwise comparison pivot tables.
+# create list of column names as pairwise comparisons
+pair_list = itertools.permutations(columns, r=2)
+
+# use pairwise list to run pair wise pivot table creation
+pivot_dicts_2 = pairingtab(df_in, pair_list, ignore=Ignore)
+
+# use output to identify matching groups - don't need to do separate by columns comp because pairingtab create list with pair both ways round
+gran_comp_list_2 = compair(pivot_dicts_2[1])
+
+# generate comparison stats
+# find the number of times, per pivot pair, that there are exact matches, as a proportion of the total number of matches
+pair_list = itertools.permutations(columns, r=2)
+comp_stats_out_2 = comp_stats(pivot_dicts_2[1], gran_comp_list_2)
+
+# compile comparisons in to dataframe
+comp_stats_df_2 = pd.DataFrame.from_dict(comp_stats_out, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
+
+# and then send to csv file
+comp_stats_df_2.to_csv("gran_comp_wo_MSM.csv", sep=",")
+
+# identify similar typing levels
+similars_2 = simi(pivot_dicts_2[1], comp_stats_out_2)
+
+# create df with a group size for each isolate and typing level and generate density plots - with group size along x-axis : sizing based on whole dataset
+density_plt(df_less_MSM, pivot_dicts_2[0], subsetting=False, xlab = "Group size (number of isolates)", ylab = "Proportion on population")
+
+# send group size dataframe to file for validataion
+g_size_out_df_2 = sizing(df_less_MSM, pivot_dicts_2[0], subsetting=False, start_date = 2016, no_years = int(6))
+g_size_out_df_2.to_csv("g_size_wo_MSM.csv", sep=",")
+
+# Re-do density plots, this time with group size determined for each subset, rather than from total dataset
+density_plt(df_less_MSM, pivot_dicts_2[0], subsetting=True, xlab = "Group size (number of isolates)", ylab = "Proportion on population")
+
+# send group size dataframe to file for validataion
+split_g_size_out_df_2 = sizing(df_less_MSM, pivot_dicts_2[0], subsetting=True, start_date = 2016, no_years = int(6))
+split_g_size_out_df_2.to_csv("g_size_split_wo_MSM.csv", sep=",")
+
+# Theil's U 
+ignore_2 = ["Accession","Uberstrain", "HC1100 (cgST Cplx)", "HC2350 (subsp.)", "HC2000", "HC1500", "Name"]
+
+associations(df_less_MSM, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, hide_rows=ignore_2, hide_columns=ignore_2, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value="0", ax=None, figsize=(25,25), annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, multiprocessing=True)
+
+# Group size stats by threshold
+thresh_dict_2 = {}
+
+thresh_dict_2["less_10_inc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(10), greater_than = False, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_2["less_50_inc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(50), greater_than = False, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_2["great_10_inc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(10), greater_than = True, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_2["great_50_inc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(50), greater_than = True, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+# single year subsets
+thresh_dict_2["less_10_exc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(10), greater_than = False, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_2["less_50_exc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(50), greater_than = False, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_2["great_10_exc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(10), greater_than = True, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_2["great_50_exc"] = size_stats(df_less_MSM, pivot_dicts_2[0], threshold = int(50), greater_than = True, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+# save group size dataframes into excel spreadsheets
+writer = pd.ExcelWriter('thresholdstats_wo_MSM.xlsx', engine='xlsxwriter')
+
+for sheet, frame in thresh_dict_2.items():
     frame.to_excel(writer, sheet_name = sheet)
 
 #critical last step
