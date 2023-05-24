@@ -380,15 +380,28 @@ def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plotting 
 # Read in spreadsheet
 df_in = pd.read_excel('~/OneDrive - The University of Liverpool (1)/Scripting/S_sonnei_spreadsheet.xlsx')
 
-# create list of column names
+# set up necessary variables
 columns = df_in.columns.to_list()
+
+Ignore = ["Accession","Uberstrain","Year","Sex","Age Group", "Foreign Travel","Continent of Travel", "Genotype Name", "blaCTX-M-27 gene", "Name", "Epi cluster"]
+
+ignore_2 = ["Accession","Uberstrain", "HC1100 (cgST Cplx)", "HC2350 (subsp.)", "HC2000", "HC1500", "Name"]
+
+hues = list(("navy", "mediumblue", "royalblue", "cornflowerblue", "deepskyblue","lightblue"))
+
+Led = list(("2016","2017","2018","2019","2020","2021"))
+
+order = list(("Genotype", "Lineage", "Clade", "Sub-Clade", "Sub-sub-Clade", "Sub-sub-sub-Clade", "250 SNP Threshold", "100 SNP Threshold", "50 SNP Threshold",  "25 SNP Threshold", "10 SNP Threshold", "5 SNP Threshold", "0 SNP Threshold", "SNP Address", "ST", "HC0 (indistinguishable)", "HC2", "HC5", "HC10", "HC20", "HC50", "HC100", "HC200", "HC400", "HC1100 (cgST Cplx)", "HC1500", "HC2000", "HC2350 (subsp.)"))
+
+
+#############################################
+## Analyses of full dataset
 
 # create a series of pairwise comparison pivot tables.
 # create list of column names as pairwise comparisons
 pair_list = itertools.permutations(columns, r=2)
 
 # use pairwise list to run pair wise pivot table creation
-Ignore = ["Accession","Uberstrain","Year","Sex","Age Group", "Foreign Travel","Continent of Travel", "Genotype Name", "blaCTX-M-27 gene", "Name", "Epi cluster"]
 pivot_dicts = pairingtab(df_in, pair_list, ignore=Ignore)
 
 # use output to identify matching groups - don't need to do separate by columns comp because pairingtab create list with pair both ways round
@@ -420,20 +433,17 @@ density_plt(df_in, pivot_dicts[0], subsetting=True, xlab = "Group size (number o
 
 # send group size dataframe to file for validataion
 split_g_size_out_df = sizing(df_in, pivot_dicts[0], subsetting=True, start_date = 2016, no_years = int(6))
-split_g_size_out_df.to_csv("g_size_split.csv", sep=",")
+
+writer = pd.ExcelWriter("g_size_split.xlsx", engine='xlsxwriter')
+for sheet, frame in split_g_size_out_df.items():
+    year = int(2016) + int(sheet)
+    frame.to_excel(writer, sheet_name = str(year))
+writer.close()
 
 # Theil's U 
-ignore_2 = ["Accession","Uberstrain", "HC1100 (cgST Cplx)", "HC2350 (subsp.)", "HC2000", "HC1500", "Name"]
-
-associations(df_in, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, hide_rows=ignore_2, hide_columns=ignore_2, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value="0", ax=None, figsize=(25,25), annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, multiprocessing=True)
+associations(df_in, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, hide_rows=ignore_2, hide_columns=ignore_2, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value=0, ax=None, figsize=(25,25), annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, multiprocessing=True)
 
 # Group size stats by threshold
-hues = list(("navy", "mediumblue", "royalblue", "cornflowerblue", "deepskyblue","lightblue"))
-
-Led = list(("2016","2017","2018","2019","2020","2021"))
-
-order = list(("Genotype", "Lineage", "Clade", "Sub-Clade", "Sub-sub-Clade", "Sub-sub-sub-Clade", "250 SNP Threshold", "100 SNP Threshold", "50 SNP Threshold",  "25 SNP Threshold", "10 SNP Threshold", "5 SNP Threshold", "0 SNP Threshold", "SNP Address", "ST", "HC0 (indistinguishable)", "HC2", "HC5", "HC10", "HC20", "HC50", "HC100", "HC200", "HC400", "HC1100 (cgST Cplx)", "HC1500", "HC2000", "HC2350 (subsp.)"))
-
 thresh_dict = {}
 
 thresh_dict["less_10_inc"] = size_stats(df_in, pivot_dicts[0], threshold = int(10), greater_than = False, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
@@ -464,7 +474,7 @@ writer.close()
 
 
 #############################################
-## Repeat everything minus the identified likely-MSM clades
+## Analyses minus the identified likely-MSM clades
 
 # Subset out MSM clades
 df_less_MSM = df_in[df_in["Epi cluster"].isnull()]
@@ -485,7 +495,7 @@ pair_list = itertools.permutations(columns, r=2)
 comp_stats_out_2 = comp_stats(pivot_dicts_2[1], gran_comp_list_2)
 
 # compile comparisons in to dataframe
-comp_stats_df_2 = pd.DataFrame.from_dict(comp_stats_out, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
+comp_stats_df_2 = pd.DataFrame.from_dict(comp_stats_out_2, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
 
 # and then send to csv file
 comp_stats_df_2.to_csv("gran_comp_wo_MSM.csv", sep=",")
@@ -505,12 +515,15 @@ density_plt(df_less_MSM, pivot_dicts_2[0], subsetting=True, xlab = "Group size (
 
 # send group size dataframe to file for validataion
 split_g_size_out_df_2 = sizing(df_less_MSM, pivot_dicts_2[0], subsetting=True, start_date = 2016, no_years = int(6))
-split_g_size_out_df_2.to_csv("g_size_split_wo_MSM.csv", sep=",")
+
+writer = pd.ExcelWriter("g_size_split_wo_MSM.xlsx", engine='xlsxwriter')
+for sheet, frame in split_g_size_out_df_2.items():
+    year = int(2016) + int(sheet)
+    frame.to_excel(writer, sheet_name = str(year))
+writer.close()
 
 # Theil's U 
-ignore_2 = ["Accession","Uberstrain", "HC1100 (cgST Cplx)", "HC2350 (subsp.)", "HC2000", "HC1500", "Name"]
-
-associations(df_less_MSM, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, hide_rows=ignore_2, hide_columns=ignore_2, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value="0", ax=None, figsize=(25,25), annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, multiprocessing=True)
+associations(df_less_MSM, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, hide_rows=ignore_2, hide_columns=ignore_2, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value=0, ax=None, figsize=(25,25), annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, multiprocessing=True)
 
 # Group size stats by threshold
 thresh_dict_2 = {}
