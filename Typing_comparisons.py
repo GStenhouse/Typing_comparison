@@ -213,7 +213,7 @@ def d_plot(input, legend=None, title=None, x_lab=None, y_lab=None, filename="d_p
     plt.title(title)
     plt.xlabel(x_lab)
     plt.ylabel(y_lab)
-    plt.savefig(filename)     # save plots as image files
+    plt.savefig(filename, bbox_inches = "tight")     # save plots as image files
     plt.close()
 
 # histograms
@@ -234,7 +234,7 @@ def h_plot(input, legend=None,title=None, x_lab=None, y_lab=None, filename="h_pl
         axs.set_title(title)
         axs.set_xlabel(x_lab)
         axs.set_ylabel(y_lab)
-        plt.savefig(filename)     # save plots as image files
+        plt.savefig(filename, bbox_inches = "tight")     # save plots as image files
         plt.close()
 
 
@@ -337,7 +337,7 @@ def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plotting 
             N.plot.bar()
             plt.ylabel(str(ylab))
             filenam = "density_plots/" + "_groupsize_" + relative + "_" + str(threshold) + inc + "subset.png"
-            plt.savefig(filenam)
+            plt.savefig(filenam, bbox_inches = "tight")
             plt.close()
             # create bar plots coloured by year
             u = n.iloc[0:no_years].transpose()
@@ -348,7 +348,7 @@ def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plotting 
             u.plot.bar(color=colours, stacked=stack)
             plt.ylabel(str(ylab))
             filename = "density_plots/" + "_groupsize_" + relative + "_" + str(threshold) + inc + "year_stack.png"
-            plt.savefig(filename)
+            plt.savefig(filename, bbox_inches = "tight")
             plt.close()
             # level specific plots
             for key in order:
@@ -360,13 +360,13 @@ def size_stats(df, piv_dict, threshold = int(10), greater_than = True, plotting 
                     f_name = "density_plots/" + str(key) + "_groupsize_" + relative + "_" + str(threshold) + inc + "_inclu_years_split.png"
                 else:    
                     f_name = "density_plots/" + str(key) + "_groupsize_" + relative + "_" + str(threshold) + inc + "sing_years_split.png"
-                plt.savefig(f_name)
+                plt.savefig(f_name, bbox_inches = "tight")
                 plt.close()
         else:
             filenam = "density_plots/" + "_groupsize_" + relative + "_" + str(threshold) + "not_subset.png"     
             n.plot.bar()
             plt.ylabel(str(ylab))
-            plt.savefig(filenam)
+            plt.savefig(filenam, bbox_inches = "tight")
             plt.close() 
     return(out)            
            
@@ -484,7 +484,7 @@ df_less_MSM = df_in[df_in["Epi cluster"].isnull()]
 pair_list = itertools.permutations(columns, r=2)
 
 # use pairwise list to run pair wise pivot table creation
-pivot_dicts_2 = pairingtab(df_in, pair_list, ignore=Ignore)
+pivot_dicts_2 = pairingtab(df_less_MSM, pair_list, ignore=Ignore)
 
 # use output to identify matching groups - don't need to do separate by columns comp because pairingtab create list with pair both ways round
 gran_comp_list_2 = compair(pivot_dicts_2[1])
@@ -549,6 +549,88 @@ thresh_dict_2["great_50_exc"] = size_stats(df_less_MSM, pivot_dicts_2[0], thresh
 writer = pd.ExcelWriter('thresholdstats_wo_MSM.xlsx', engine='xlsxwriter')
 
 for sheet, frame in thresh_dict_2.items():
+    frame.to_excel(writer, sheet_name = sheet)
+
+#critical last step
+writer.close()
+
+
+#############################################
+## Analyses minus the identified likely-MSM clades
+
+# Subset out MSM clades
+df_MSM = df_in[df_in["Epi cluster"].notnull()]
+
+# create a series of pairwise comparison pivot tables.
+# create list of column names as pairwise comparisons
+pair_list = itertools.permutations(columns, r=2)
+
+# use pairwise list to run pair wise pivot table creation
+pivot_dicts_3 = pairingtab(df_MSM, pair_list, ignore=Ignore)
+
+# use output to identify matching groups - don't need to do separate by columns comp because pairingtab create list with pair both ways round
+gran_comp_list_3 = compair(pivot_dicts_3[1])
+
+# generate comparison stats
+# find the number of times, per pivot pair, that there are exact matches, as a proportion of the total number of matches
+pair_list = itertools.permutations(columns, r=2)
+comp_stats_out_3 = comp_stats(pivot_dicts_3[1], gran_comp_list_3)
+
+# compile comparisons in to dataframe
+comp_stats_df_3 = pd.DataFrame.from_dict(comp_stats_out_3, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
+
+# and then send to csv file
+comp_stats_df_3.to_csv("gran_comp_wo_MSM.csv", sep=",")
+
+# identify similar typing levels
+similars_3 = simi(pivot_dicts_3[1], comp_stats_out_3)
+
+# create df with a group size for each isolate and typing level and generate density plots - with group size along x-axis : sizing based on whole dataset
+density_plt(df_MSM, pivot_dicts_3[0], subsetting=False, xlab = "Group size (number of isolates)", ylab = "Proportion on population")
+
+# send group size dataframe to file for validataion
+g_size_out_df_3 = sizing(df_MSM, pivot_dicts_3[0], subsetting=False, start_date = 2016, no_years = int(6))
+g_size_out_df_3.to_csv("g_size_wo_MSM.csv", sep=",")
+
+# Re-do density plots, this time with group size determined for each subset, rather than from total dataset
+density_plt(df_MSM, pivot_dicts_3[0], subsetting=True, xlab = "Group size (number of isolates)", ylab = "Proportion on population")
+
+# send group size dataframe to file for validataion
+split_g_size_out_df_3 = sizing(df_MSM, pivot_dicts_3[0], subsetting=True, start_date = 2016, no_years = int(6))
+
+writer = pd.ExcelWriter("g_size_split_MSM.xlsx", engine='xlsxwriter')
+for sheet, frame in split_g_size_out_df_3.items():
+    year = int(2016) + int(sheet)
+    frame.to_excel(writer, sheet_name = str(year))
+writer.close()
+
+# Theil's U 
+associations(df_MSM, nominal_columns='auto', numerical_columns=None, mark_columns=False, nom_nom_assoc='theil', num_num_assoc='pearson', nom_num_assoc='correlation_ratio', symmetric_nom_nom=True, symmetric_num_num=False, hide_rows=ignore_2, hide_columns=ignore_2, cramers_v_bias_correction=True, nan_strategy="replace", nan_replace_value=0, ax=None, figsize=(25,25), annot=True, fmt='.2f', sv_color='silver', cbar=True, vmax=1.0, vmin=0.0, plot=True, compute_only=False, clustering=False, title=None, multiprocessing=True)
+
+# Group size stats by threshold
+thresh_dict_3 = {}
+
+thresh_dict_3["less_10_inc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(10), greater_than = False, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_3["less_50_inc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(50), greater_than = False, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_3["great_10_inc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(10), greater_than = True, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_3["great_50_inc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(50), greater_than = True, plotting = True, subsetting = True, inclusive = "both", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+# single year subsets
+thresh_dict_3["less_10_exc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(10), greater_than = False, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_3["less_50_exc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(50), greater_than = False, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_3["great_10_exc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(10), greater_than = True, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+thresh_dict_3["great_50_exc"] = size_stats(df_MSM, pivot_dicts_3[0], threshold = int(50), greater_than = True, plotting = True, subsetting = True, inclusive = "neither", start_date = int(2016), no_years = int(6), colours = hues, leg = Led, order = order)
+
+# save group size dataframes into excel spreadsheets
+writer = pd.ExcelWriter('thresholdstats_MSM.xlsx', engine='xlsxwriter')
+
+for sheet, frame in thresh_dict_3.items():
     frame.to_excel(writer, sheet_name = sheet)
 
 #critical last step
