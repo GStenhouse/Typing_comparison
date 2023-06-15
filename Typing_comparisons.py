@@ -413,7 +413,7 @@ pair_list = itertools.permutations(columns, r=2)
 comp_stats_out = comp_stats(pivot_dicts[1], gran_comp_list)
 
 # compile comparisons in to dataframe
-comp_stats_df = pd.DataFrame.from_dict(comp_stats_out, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
+comp_stats_df = pd.DataFrame.from_dict(comp_stats_out, orient = "index", columns = ["Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"])
 
 # and then send to csv file
 comp_stats_df.to_csv("gran_comp.csv", sep=",")
@@ -497,7 +497,7 @@ pair_list = itertools.permutations(columns, r=2)
 comp_stats_out_2 = comp_stats(pivot_dicts_2[1], gran_comp_list_2)
 
 # compile comparisons in to dataframe
-comp_stats_df_2 = pd.DataFrame.from_dict(comp_stats_out_2, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
+comp_stats_df_2 = pd.DataFrame.from_dict(comp_stats_out_2, orient = "index", columns = ["Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"])
 
 # and then send to csv file
 comp_stats_df_2.to_csv("gran_comp_wo_MSM.csv", sep=",")
@@ -581,7 +581,7 @@ pair_list = itertools.permutations(columns, r=2)
 comp_stats_out_3 = comp_stats(pivot_dicts_3[1], gran_comp_list_3)
 
 # compile comparisons in to dataframe
-comp_stats_df_3 = pd.DataFrame.from_dict(comp_stats_out_3, orient = "index", columns = ("Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"))
+comp_stats_df_3 = pd.DataFrame.from_dict(comp_stats_out_3, orient = "index", columns = ["Rows:Columns", "Difference", "Pecentage difference", "Frequency excess columns", "Number of excess columns", "Average excess"])
 
 # and then send to csv file
 comp_stats_df_3.to_csv("gran_comp_wo_MSM.csv", sep=",")
